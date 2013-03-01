@@ -66,11 +66,12 @@ class Command(BaseCommand, LoggerMixin):
 
         return full_url
 
-
     def send_backend_chunk(self, router_url, pks, backend_name):
         msgs = Message.objects.using(self.db).filter(pk__in=pks).exclude(connection__identity__iregex="[a-z]")
+        url = ""
         try:
-            url = self.build_send_url(router_url, backend_name, ' '.join(msgs.values_list('connection__identity', flat=True)), msgs[0].text)
+            url = self.build_send_url(router_url, backend_name,
+                ' '.join(msgs.values_list('connection__identity', flat=True)), msgs[0].text)
             status_code = self.fetch_url(url)
 
             # kannel likes to send 202 responses, really any
@@ -83,8 +84,12 @@ class Command(BaseCommand, LoggerMixin):
                 msgs.update(status='Q')
 
         except Exception as e:
-            self.error("SMS%s Message not sent: %s .. queued for later delivery." % (pks, str(e)))
-            msgs.update(status='Q')
+            import sys
+            #traceback.print_exc()
+
+            self.error("SMS%s Message not sent:\nURL: %s \n Exception %s %s \n  %s" % (
+            pks, url, sys.exc_info()[0], sys.exc_info()[1], str(traceback.format_exc(10))))
+        msgs.update(status='Q')
 
 
     def send_all(self, router_url, to_send):
@@ -108,12 +113,48 @@ class Command(BaseCommand, LoggerMixin):
         if len(to_process):
             self.send_all(router_url, [to_process[0]])
 
+    @transaction.commit_manually
+    def send_in_batches(self, CHUNK_SIZE, db, recipients):
+        try:
+            self.debug("servicing db '%s'" % db)
+            router_url = settings.DATABASES[db]['ROUTER_URL']
+#            transaction.enter_transaction_management(using=db)
+            self.db = db
+            to_process = MessageBatch.objects.using(db).filter(status='Q')
+            self.debug("looking for batch messages to process")
+            if to_process.count():
+                self.info("found %d batches in %s to process" % (to_process.count(), db))
+                batch = to_process[0]
+                to_process = batch.messages.using(db).filter(direction='O',
+                    status__in=['Q']).order_by('priority', 'status', 'connection__backend__name')[:CHUNK_SIZE]
+                self.info("%d chunk of messages found in %s" % (to_process.count(), db))
+                if to_process.count():
+                    self.debug("found batch message %d with Queued messages to send" % batch.pk)
+                    self.send_all(router_url, to_process)
+                elif batch.messages.using(db).filter(status__in=['S', 'C']).count() == batch.messages.using(db).count():
+                    self.info("found batch message %d ready to be closed" % batch.pk)
+                    batch.status = 'S'
+                    batch.save()
+                else:
+                    self.debug("reverting to individual message sending")
+                    self.send_individual(router_url)
+            else:
+                self.debug("no batches found, reverting to individual message sending")
+                self.send_individual(router_url)
+            transaction.commit(using=db)
+        except Exception, exc:
+            transaction.rollback(using=db)
+            print self.critical(traceback.format_exc(exc))
+            if recipients:
+                send_mail('[Django] Error: messenger command', str(traceback.format_exc(exc)),'root@uganda.rapidsms.org', recipients, fail_silently=True)
+            #                    continue
 
     def handle(self, **options):
         """
 
         """
         DBS = settings.DATABASES.keys()
+        DBS.remove('geoserver')
         #DBS.remove('default') # skip the dummy -we now check default DB as well
         CHUNK_SIZE = getattr(settings, 'MESSAGE_CHUNK_SIZE', 400)
         self.info("starting up")
@@ -123,43 +164,10 @@ class Command(BaseCommand, LoggerMixin):
         while (True):
             self.debug("entering main loop")
             for db in DBS:
-                try:
-                    self.debug("servicing db '%s'" % db)
-                    router_url = settings.DATABASES[db]['ROUTER_URL']
-                    transaction.enter_transaction_management(using=db)
-                    self.db = db
-                    to_process = MessageBatch.objects.using(db).filter(status='Q')
-                    self.debug("looking for batch messages to process")
-                    if to_process.count():
-                        self.info("found %d batches in %s to process" % (to_process.count(), db))
-                        batch = to_process[0]
-                        to_process = batch.messages.using(db).filter(direction='O',
-                                      status__in=['Q']).order_by('priority', 'status', 'connection__backend__name')[:CHUNK_SIZE]
-                        self.info("%d chunk of messages found in %s" % (to_process.count(), db))
-                        if to_process.count():
-                            self.debug("found batch message %d with Queued messages to send" % batch.pk)
-                            self.send_all(router_url, to_process)
-                        elif batch.messages.using(db).filter(status__in=['S', 'C']).count() == batch.messages.using(db).count():
-                            self.info("found batch message %d ready to be closed" % batch.pk)
-                            batch.status = 'S'
-                            batch.save()
-                        else:
-                            self.debug("reverting to individual message sending")
-                            self.send_individual(router_url)
-                    else:
-                        self.debug("no batches found, reverting to individual message sending")
-                        self.send_individual(router_url)
-                    transaction.commit(using=db)
-                except Exception, exc:
-                    transaction.rollback(using=db)
-                    print self.critical(traceback.format_exc(exc))
-                    if recipients:
-                        send_mail('[Django] Error: messenger command', str(traceback.format_exc(exc)), 'root@uganda.rapidsms.org', recipients, fail_silently=True)
-                    continue
-
+                self.send_in_batches(CHUNK_SIZE, db, recipients)
             # yield from the messages table, messenger can cause
             # deadlocks if it's contanstly polling the messages table
-            close_connection()
+#            close_connection()
             time.sleep(0.5)
 
 
