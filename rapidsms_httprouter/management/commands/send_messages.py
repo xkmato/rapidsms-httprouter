@@ -169,8 +169,8 @@ class Command(BaseCommand, LoggerMixin):
             self.debug("entering main loop")
             for db in DBS:
                 self.send_in_batches(CHUNK_SIZE, db, recipients)
-                gc.collect()
-                time.sleep(0.5)
+                # gc.collect()
+            time.sleep(0.5)
                 # yield from the messages table, messenger can cause
                 # deadlocks if it's contanstly polling the messages table
 #            close_connection()
