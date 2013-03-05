@@ -169,7 +169,6 @@ class Command(BaseCommand, LoggerMixin):
             self.debug("entering main loop")
             for db in DBS:
                 self.send_in_batches(CHUNK_SIZE, db, recipients)
-                gc.collect()
                 time.sleep(0.5)
                 from django import db
                 db.reset_queries()
