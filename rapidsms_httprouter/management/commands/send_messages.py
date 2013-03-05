@@ -11,6 +11,7 @@ from urllib import quote_plus
 from urllib2 import urlopen
 from rapidsms.log.mixin import LoggerMixin
 import gc
+from memory_profiler import profile
 
 
 class Command(BaseCommand, LoggerMixin):
@@ -115,6 +116,7 @@ class Command(BaseCommand, LoggerMixin):
         if len(to_process):
             self.send_all(router_url, [to_process[0]])
 
+    @profile
     @transaction.commit_manually
     def send_in_batches(self, CHUNK_SIZE, db, recipients):
         try:
