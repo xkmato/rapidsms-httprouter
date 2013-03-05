@@ -10,6 +10,8 @@ from django.db import transaction, close_connection
 from urllib import quote_plus
 from urllib2 import urlopen
 from rapidsms.log.mixin import LoggerMixin
+import gc
+
 
 class Command(BaseCommand, LoggerMixin):
 
@@ -165,6 +167,7 @@ class Command(BaseCommand, LoggerMixin):
             self.debug("entering main loop")
             for db in DBS:
                 self.send_in_batches(CHUNK_SIZE, db, recipients)
+                gc.collect()
             # yield from the messages table, messenger can cause
             # deadlocks if it's contanstly polling the messages table
 #            close_connection()
