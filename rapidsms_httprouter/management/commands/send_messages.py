@@ -171,6 +171,8 @@ class Command(BaseCommand, LoggerMixin):
                 self.send_in_batches(CHUNK_SIZE, db, recipients)
                 gc.collect()
                 time.sleep(0.5)
+                from django import db
+                db.reset_queries()
                 # yield from the messages table, messenger can cause
                 # deadlocks if it's contanstly polling the messages table
 #            close_connection()
