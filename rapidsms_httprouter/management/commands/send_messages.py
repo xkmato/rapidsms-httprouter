@@ -172,6 +172,7 @@ class Command(BaseCommand, LoggerMixin):
                 time.sleep(0.5)
                 from django import db
                 db.reset_queries()
+            close_connection()
                 # yield from the messages table, messenger can cause
                 # deadlocks if it's contanstly polling the messages table
 #            close_connection()
