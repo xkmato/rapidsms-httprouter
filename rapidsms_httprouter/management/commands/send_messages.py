@@ -154,7 +154,7 @@ class Command(BaseCommand, LoggerMixin):
                     transaction.rollback(using=db)
                     print self.critical(traceback.format_exc(exc))
                     if recipients:
-                        send_mail('[Django] Error: messenger command', str(traceback.format_exc(exc)), 'root@uganda.rapidsms.org', recipients, fail_silently=True)
+                        send_mail('[Django] Error: messenger command', str(traceback.format_exc(exc)), 'askpaul82@gmail.com', recipients, fail_silently=True)
                     continue
 
             # yield from the messages table, messenger can cause

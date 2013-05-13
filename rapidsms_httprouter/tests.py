@@ -24,10 +24,10 @@ class BackendTest(TransactionTestCase):
 
     def setUp(self):
         (self.backend, created) = Backend.objects.get_or_create(name="test_backend")
-        (self.connection, created) = Connection.objects.get_or_create(backend=self.backend, identity='2067799294')
+        (self.connection, created) = Connection.objects.get_or_create(backend=self.backend, identity='6262')
 
         (self.backend2, created) = Backend.objects.get_or_create(name="test_backend2")
-        (self.connection2, created) = Connection.objects.get_or_create(backend=self.backend2, identity='2067799291')
+        (self.connection2, created) = Connection.objects.get_or_create(backend=self.backend2, identity='6262')
         settings.SMS_APPS = []
 
     def tearDown(self):
@@ -42,7 +42,7 @@ class BackendTest(TransactionTestCase):
 
         # sleep a teeny bit to let it send
         self.assertEquals('test_backend', msg1.connection.backend.name)
-        self.assertEquals('2067799294', msg1.connection.identity)
+        self.assertEquals('6262', msg1.connection.identity)
         self.assertEquals('test', msg1.text)
         self.assertEquals('O', msg1.direction)
         self.assertEquals('Q', msg1.status)
@@ -95,7 +95,7 @@ class BackendTest(TransactionTestCase):
         self.assertEquals('S', msg1.status)
 
         # check whether our url was set right
-        self.assertEquals("http://mykannel.com/cgi-bin/sendsms?from=1234&text=test&to=2067799294&smsc=test_backend&id=%d" % msg1.id, test_fetch_url.url)
+        self.assertEquals("http://127.0.0.1/cgi-bin/sendsms?from=1234&text=test&to=2067799294&smsc=test_backend&id=%d" % msg1.id, test_fetch_url.url)
 
         # now send to our other backend
         msg2 = router.add_outgoing(self.connection2, "test2")
@@ -109,7 +109,7 @@ class BackendTest(TransactionTestCase):
         self.assertEquals('S', msg2.status)
 
         # check whether our url was set right again
-        self.assertEquals("http://mykannel2.com/cgi-bin/sendsms?from=1234&text=test2&to=2067799291&smsc=test_backend2&id=%d" % msg2.id, test_fetch_url.url)
+        self.assertEquals("http://127.0.0.1/cgi-bin/sendsms?from=1234&text=test2&to=2067799291&smsc=test_backend2&id=%d" % msg2.id, test_fetch_url.url)
 
 class RouterTest(TestCase):
 
@@ -126,7 +126,7 @@ class RouterTest(TestCase):
         # tests that messages are correctly build
         msg1 = router.add_message('test', '+250788383383', 'test', 'I', 'P')
         self.assertEquals('test', msg1.connection.backend.name)
-        self.assertEquals('250788383383', msg1.connection.identity)
+        self.assertEquals('6262', msg1.connection.identity)
         self.assertEquals('test', msg1.text)
         self.assertEquals('I', msg1.direction)
         self.assertEquals('P', msg1.status)

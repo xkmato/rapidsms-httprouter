@@ -10,7 +10,7 @@ class Command(BaseCommand, LoggerMixin):
         allow = getattr(settings, 'QOS_INCLUDE_MANAGERS_AS_RECIPIENTS', False)
         recipients = get_recipients(include_managers=allow)
         for msg in get_alarms(mode=getattr(settings, 'QOS_BACKEND_TYPE', 'shortcode')):
-            send_mail("QOS Alarm", msg, "root@uganda.rapidsms.org", recipients, fail_silently=True)
+            send_mail("QOS Alarm", msg, "askpaul82@gmail.com", recipients, fail_silently=True)
 
     def handle(self, *args, **options):
         self.check_qos_messages()

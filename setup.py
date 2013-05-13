@@ -12,8 +12,8 @@ setup(
     description='Provides HTTP endpoints for a RapidSMS router, doing all handling in the Django thread.',
     long_description=open('README.rst').read(),
 
-    author='Nicolas Pottier, Eric Newcomer',
-    author_email='code@nyaruka.com',
+    author='Engulu Paul',
+    author_email='askpaul82@gmail.com',
 
     url='http://github.com/nyaruka/rapidsms-httprouter',
     download_url='http://github.com/nyaruka/rapidsms-httprouter/downloads',
