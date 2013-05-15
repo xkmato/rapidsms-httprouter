@@ -8,6 +8,9 @@ from rapidsms.models import Contact, Connection
 from .managers import ForUpdateManager
 from django.conf import settings
 
+import logging
+log = logging.getLogger(__name__)
+
 mass_text_sent = django.dispatch.Signal(providing_args=["messages", "status"])
 
 DIRECTION_CHOICES = (
@@ -70,8 +73,12 @@ class Message(models.Model):
 
     @classmethod
     @transaction.commit_on_success
-    def mass_text(cls, text, connections, status='P', batch_status='Q'):
-        batch = MessageBatch.objects.create(status=batch_status)
+    def mass_text(cls, text, connections, status='P', batch_status='Q', batch_name=None):
+        log.info("[mass_text] TRANSACTION START")
+        if connections is not None:
+            log.info("[mass_text] Sending [%s] to [%d] connections with batch name [%s]" % (text, len(connections), batch_name))
+
+        batch = MessageBatch.objects.create(status=batch_status, name=batch_name)
         sql = 'insert into rapidsms_httprouter_message (text, date, direction, status, batch_id, connection_id, priority) values '
         insert_list = []
         params_list = []
@@ -88,6 +95,8 @@ class Message(models.Model):
         pks = c.fetchall()
         toret = Message.objects.filter(pk__in=[pk[0] for pk in pks])
         mass_text_sent.send(sender=batch, messages=toret, status=status)
+
+        log.info("[mass_text] TRANSACTION COMMIT")
         return toret
 
 
